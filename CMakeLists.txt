@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(VcabLevel VERSION 1.0.0 LANGUAGES C CXX)
+project(VcabLevel VERSION 1.0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -53,7 +53,7 @@ target_link_libraries(vcablv_render PRIVATE
 
 # ---- プラグイン（VST3）と単体アプリ（EXE） ----
 juce_add_plugin(VcabLevel
-    COMPANY_NAME "VcabLevel"
+    COMPANY_NAME "Vcab"
     PRODUCT_NAME "VcabLevel"
     PLUGIN_MANUFACTURER_CODE Vcha
     PLUGIN_CODE Vclv
