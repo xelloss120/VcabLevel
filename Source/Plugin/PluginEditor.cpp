@@ -23,6 +23,9 @@ const vcab::P kGateGrid[3][2] = { { vcab::P::gateThreshold, vcab::P::gateHystere
 const vcab::P kCompGrid[3][2] = { { vcab::P::compThreshold, vcab::P::compRatio },
                                   { vcab::P::compAttack, vcab::P::compKnee },
                                   { vcab::P::compRelease, vcab::P::count } };
+const vcab::P kReverbGrid[3][2] = { { vcab::P::reverbLevel, vcab::P::count },
+                                    { vcab::P::reverbTime, vcab::P::reverbPredelay },
+                                    { vcab::P::reverbHighCut, vcab::P::reverbLowCut } };
 } // namespace
 
 VcabLevelEditor::Control& VcabLevelEditor::add (vcab::P id, bool withLabel)
@@ -100,6 +103,11 @@ VcabLevelEditor::VcabLevelEditor (VcabLevelProcessor& p)
         for (auto id : column)
             if (id != vcab::P::count)
                 add (id, true);
+    add (vcab::P::reverbOn, false);
+    for (const auto& column : kReverbGrid)
+        for (auto id : column)
+            if (id != vcab::P::count)
+                add (id, true);
     add (vcab::P::gainOn, false);
     add (vcab::P::gain, false); // 名前はオン/オフのチェックボックスと同じなので出さない
     add (vcab::P::limiterOn, false);
@@ -161,7 +169,7 @@ void VcabLevelEditor::paint (juce::Graphics& g)
     g.setFont (juce::FontOptions (kFont + 3.0f, juce::Font::bold));
     g.drawText ("VcabLevel", juce::Rectangle<int> (kMargin, 0, 120, kHeader), juce::Justification::centredLeft);
     g.setColour (kPanel);
-    for (auto a : { gateArea, compArea, gainArea, limiterArea })
+    for (auto a : { gateArea, compArea, reverbArea, gainArea, limiterArea })
         g.fillRoundedRectangle (a.toFloat(), 4.0f);
 }
 
@@ -209,9 +217,11 @@ void VcabLevelEditor::resized()
         input->label.setBounds (h.removeFromRight (textWidth (input->label.getText()) + kLabelInset + kLabelGap));
     }
 
-    // 下から: ゲインとリミッターの帯（1 行）、コンプの帯（2 行）、ゲートの帯（2 行）。残りがグラフ
+    // 下から: ゲインとリミッターの帯（1 行）、リバーブの帯（2 行）、コンプの帯（2 行）、ゲートの帯（2 行）。残りがグラフ
     r.removeFromBottom (kMargin);
     auto lastRow = r.removeFromBottom (kRow + 12);
+    r.removeFromBottom (kPanelGap);
+    reverbArea = r.removeFromBottom (kRow * 2 + 12);
     r.removeFromBottom (kPanelGap);
     compArea = r.removeFromBottom (kRow * 2 + 12);
     r.removeFromBottom (kPanelGap);
@@ -225,7 +235,8 @@ void VcabLevelEditor::resized()
     int labels = 0;
     for (int c = 0; c < 3; ++c)
     {
-        lw[c] = std::max (labelWidth ({ kGateGrid[c][0], kGateGrid[c][1] }), labelWidth ({ kCompGrid[c][0], kCompGrid[c][1] }));
+        lw[c] = std::max ({ labelWidth ({ kGateGrid[c][0], kGateGrid[c][1] }), labelWidth ({ kCompGrid[c][0], kCompGrid[c][1] }),
+                            labelWidth ({ kReverbGrid[c][0], kReverbGrid[c][1] }) });
         labels += lw[c];
     }
     auto layoutGrid = [&] (juce::Rectangle<int> area, vcab::P onId, const vcab::P (&grid)[3][2])
@@ -243,6 +254,7 @@ void VcabLevelEditor::resized()
     };
     layoutGrid (gateArea, vcab::P::gateOn, kGateGrid);
     layoutGrid (compArea, vcab::P::compOn, kCompGrid);
+    layoutGrid (reverbArea, vcab::P::reverbOn, kReverbGrid);
 
     // ゲイン ｜ リミッター
     {
@@ -281,6 +293,9 @@ void VcabLevelEditor::timerCallback()
     for (const auto& column : kCompGrid)
         for (auto id : column)
             dim (id, s.comp.on);
+    for (const auto& column : kReverbGrid)
+        for (auto id : column)
+            dim (id, s.reverb.on);
     dim (vcab::P::gain, s.gain.on);
     dim (vcab::P::limiterCeiling, s.limiter.on);
     dim (vcab::P::limiterRelease, s.limiter.on);

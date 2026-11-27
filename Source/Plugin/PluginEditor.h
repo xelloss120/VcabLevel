@@ -37,7 +37,7 @@ private:
     std::vector<std::unique_ptr<Control>> controls;
     DisplayView display;
     juce::TextButton resetButton, audioSettingsButton;
-    juce::Rectangle<int> gateArea, compArea, gainArea, limiterArea; // 操作の帯（paint で下地を描く）
+    juce::Rectangle<int> gateArea, compArea, reverbArea, gainArea, limiterArea; // 操作の帯（paint で下地を描く）
 
     Control* control (vcab::P id);
     Control& add (vcab::P id, bool withLabel);

@@ -24,6 +24,9 @@ enum class P : int
     // ゲイン（5 章）
     gainOn, gain,
 
+    // リバーブ（12 章）
+    reverbOn, reverbLevel, reverbTime, reverbPredelay, reverbHighCut, reverbLowCut,
+
     // リミッター（6 章）
     limiterOn, limiterCeiling, limiterRelease,
 
@@ -63,7 +66,7 @@ bool isUiSetting (P id); // 入力チャンネルなど（オートメーショ�
 struct GateSettings
 {
     bool on = true;
-    float threshold = -48.0f;  // 開く線（dBFS）
+    float threshold = -42.0f;  // 開く線（dBFS）
     float hysteresis = 3.0f;   // 閉じる線を開く線よりこれだけ下げる（dB）
     float attackMs = 3.0f;
     float holdMs = 100.0f;
@@ -77,8 +80,8 @@ struct CompSettings
     float threshold = -18.0f;  // dBFS（RMS）
     float ratio = 2.0f;
     float knee = 1.0f;         // dB
-    float attackMs = 6.0f;
-    float releaseMs = 150.0f;
+    float attackMs = 10.0f;
+    float releaseMs = 100.0f;
 };
 
 // ゲインの設定（5 章）
@@ -86,6 +89,17 @@ struct GainSettings
 {
     bool on = true;
     float db = 6.0f;
+};
+
+// リバーブの設定（12 章）
+struct ReverbSettings
+{
+    bool on = false;
+    float levelDb = -18.0f;    // 響きの量（元の声は変えない）
+    float timeS = 1.5f;        // 響きが 60dB 小さくなるまでの時間（秒）
+    float predelayMs = 35.0f;
+    float highCutHz = 6000.0f;
+    float lowCutHz = 200.0f;
 };
 
 // リミッターの設定（6 章）
@@ -104,6 +118,7 @@ struct Settings
     GateSettings gate;
     CompSettings comp;
     GainSettings gain;
+    ReverbSettings reverb;
     LimiterSettings limiter;
     InputChannel inputChannel = InputChannel::automatic;
 
@@ -112,8 +127,8 @@ struct Settings
 
 std::array<float, kNumParams> defaultValues();
 
-// 4 段を通した静的な特性（入る音の dBFS → 出る音の dBFS。8 章の「入出力の特性」）。
-// オフの段は入れない。ゲートの開く線より下は -1000 を返す（閉じると無音）
+// ゲート・コンプ・ゲイン・リミッターを通した静的な特性（入る音の dBFS → 出る音の dBFS。8 章の「入出力の特性」）。
+// オフの段は入れない。リバーブ（時間で変わる響き）は入れない。ゲートの開く線より下は -1000 を返す（閉じると無音）
 float staticCurveDb (const Settings& s, float inDb);
 // コンプの特性: 入る音（dB）に対して下げる量（dB、0 以上。4 章の式）
 float compReductionDb (const CompSettings& c, float inDb);

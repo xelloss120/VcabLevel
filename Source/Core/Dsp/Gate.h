@@ -1,4 +1,4 @@
-// ゲート（3 章）。入口の音で判定し、かける倍率（0〜1）を返す。音そのものにはかけない（かけるのは Engine の最後）。
+// ゲート（3 章）。入口の音で判定し、かける倍率（0〜1）を返す。音そのものにはかけない（かけるのは Engine。リバーブとリミッターの前）。
 #pragma once
 
 #include "../Params.h"
@@ -19,6 +19,8 @@ public:
         // 判定: 1ms ほどならしたピーク（山は即座に取り、1ms で下げる）
         const float a = x < 0.0f ? -x : x;
         env = a > env ? a : env * envCoef;
+        if (env < kEnvFloor)
+            env = 0.0f; // 無音が続いても非正規化数に入らないように（呼び出し側の設定に頼らない）。閉じる線（-92dB 以上）よりずっと下
 
         if (env >= openLin)
         {
@@ -54,6 +56,7 @@ public:
 
 private:
     static constexpr float kClosedLin = 1.0e-4f; // -80dB
+    static constexpr float kEnvFloor = 1.0e-20f;  // -400dB
 
     double fs = 48000.0;
     GateSettings settings;

@@ -54,7 +54,6 @@ void DisplayView::timerCallback()
     settings = proc.currentSettings();
     float inPeak = -120.0f, outPeak = -120.0f, compPeak = 0.0f, limiterPeak = 0.0f;
     vcab::MeterFrame f;
-    bool any = false;
     while (proc.meters().pop (f))
     {
         history[static_cast<size_t> (historyPos)] = f;
@@ -64,13 +63,8 @@ void DisplayView::timerCallback()
         compPeak = std::max (compPeak, f.compDb);
         limiterPeak = std::max (limiterPeak, f.limiterDb);
         latest = f;
-        any = true;
     }
-    if (! any)
-    {
-        repaint(); // 音が流れていなくても、つまみの変化（横線、特性）は描き直す
-        return;
-    }
+    // 音が流れていない間（ホストが止まっているなど）も、メーターは下げていく。つまみの変化（横線、特性）も描き直す
     shownIn = std::max (inPeak, shownIn - kFallDbPerFrame);
     shownOut = std::max (outPeak, shownOut - kFallDbPerFrame);
     shownComp = std::max (compPeak, std::max (0.0f, shownComp - kFallDbPerFrame));
@@ -86,7 +80,7 @@ juce::String DisplayView::getTooltip()
                      "青の塗りは入力、橙の線は出力の大きさ（10ms ごとの山）。上から伸びる黄はコンプ、赤はリミッターが削った量（0dB の線からの深さ）。\n"
                      "紫の塗りはゲートが閉じていた所。横線は、紫がゲートの開く線（実線）と閉じる線（点線）、黄の点線がコンプの閾値、赤が上限です。");
     if (transferArea.contains (m))
-        return utf8 ("入る音の大きさ（横）に対して、出る音の大きさ（縦）。4 段を通した特性です（オフの段は入りません）。\n"
+        return utf8 ("入る音の大きさ（横）に対して、出る音の大きさ（縦）。ゲート・コンプ・ゲイン・リミッターを通した特性です（オフの段とリバーブは入りません）。\n"
                      "ゲートの開く線より下は一番下（無音）まで下がり、コンプの閾値から傾きが緩み、ゲインの分だけ上がり、上限で頭打ちになります。\n"
                      "白い点は、いまの入力（コンプが見ている平均の大きさ）です。");
     if (meterArea.contains (m))

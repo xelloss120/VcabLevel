@@ -14,6 +14,8 @@ constexpr double kFrameSeconds = 0.010; // 画面用の区切り
 float toDb (float lin, float floorDb = -120.0f) { return lin > 0.0f ? std::max (floorDb, 20.0f * std::log10 (lin)) : floorDb; }
 float target (bool on) { return on ? 1.0f : 0.0f; }
 float ramp (float v, float t, float step) { return v + std::clamp (t - v, -step, step); }
+// 削り量（dB）を倍率にする。1e-7dB より小さいと倍率は float で 1 に丸まるので、pow を呼ばない（負荷を減らす。値は同じ）
+float reductionToGain (float db) { return db < 1.0e-7f ? 1.0f : std::pow (10.0f, -db / 20.0f); }
 } // namespace
 
 void Engine::prepare (double sampleRate, int block)
@@ -23,6 +25,8 @@ void Engine::prepare (double sampleRate, int block)
     gate.prepare (fs);
     comp.prepare (fs);
     limiter.prepare (fs);
+    reverb.prepare (fs);
+    reverbIdle = true;
     dryRing.assign (static_cast<size_t> (limiter.latency() + 1), 0.0f);
     dryPos = 0;
     mixStep = static_cast<float> (1.0 / (kMixSeconds * fs));
@@ -35,6 +39,8 @@ void Engine::prepare (double sampleRate, int block)
     setSettings (settings);
     gateMix = target (settings.gate.on);
     compMix = target (settings.comp.on);
+    reverbMix = target (settings.reverb.on);
+    reverbLin = std::pow (10.0f, settings.reverb.levelDb / 20.0f);
     limiterMix = target (settings.limiter.on);
     bypassMix = target (settings.bypass);
     gainLin = settings.gain.on ? std::pow (10.0f, settings.gain.db / 20.0f) : 1.0f;
@@ -45,6 +51,7 @@ void Engine::setSettings (const Settings& s)
     settings = s;
     gate.setSettings (s.gate);
     comp.setSettings (s.comp);
+    reverb.setSettings (s.reverb);
     limiter.setSettings (s.limiter);
 }
 
@@ -63,7 +70,16 @@ void Engine::processChunk (float* data, int n)
 {
     const float gateTarget = target (settings.gate.on), compTarget = target (settings.comp.on);
     const float limiterTarget = target (settings.limiter.on), bypassTarget = target (settings.bypass);
+    const float reverbTarget = target (settings.reverb.on);
     const float gainTarget = settings.gain.on ? std::pow (10.0f, settings.gain.db / 20.0f) : 1.0f;
+    const float reverbLevelTarget = std::pow (10.0f, settings.reverb.levelDb / 20.0f);
+
+    // リバーブは、オフで鳴り終わったら止める（負荷を減らす）。次にオンにしたときは、止める前の響きを消してから始める
+    if (reverbTarget > 0.0f && reverbIdle)
+    {
+        reverb.reset();
+        reverbIdle = false;
+    }
     const float ceilingLin = std::pow (10.0f, settings.limiter.ceiling / 20.0f);
     const int dryLen = static_cast<int> (dryRing.size());
 
@@ -72,21 +88,32 @@ void Engine::processChunk (float* data, int n)
         const float x = data[i];
         gateMix = ramp (gateMix, gateTarget, mixStep);
         compMix = ramp (compMix, compTarget, mixStep);
+        reverbMix = ramp (reverbMix, reverbTarget, mixStep);
         limiterMix = ramp (limiterMix, limiterTarget, mixStep);
         bypassMix = ramp (bypassMix, bypassTarget, mixStep);
         gainLin = gainTarget + (gainLin - gainTarget) * gainCoef;
+        reverbLin = reverbLevelTarget + (reverbLin - reverbLevelTarget) * gainCoef;
 
         // 元の音（バイパス用）を遅延の分だけ遅らせる
         dryRing[static_cast<size_t> (dryPos)] = x;
         dryPos = dryPos + 1 == dryLen ? 0 : dryPos + 1;
         const float dry = dryRing[static_cast<size_t> (dryPos)]; // いちばん古い = L 標本前
 
-        // ゲートの判定（入口の音。かけるのは最後。判定が 1ms 先の音なので、ゲートも先読みになる）
-        const float gateGain = 1.0f + (gate.next (x) - 1.0f) * gateMix;
+        // ゲートの判定（入口の音）
+        const float gateOpen = gate.next (x);
+        const float gateGain = 1.0f + (gateOpen - 1.0f) * gateMix;
 
-        // コンプ → ゲイン
+        // コンプ → ゲイン → ゲートの開け閉め
         const float compDb = comp.next (x) * compMix;
-        float y = x * std::pow (10.0f, -compDb / 20.0f) * gainLin;
+        float y = x * reductionToGain (compDb) * gainLin * gateGain;
+
+        // リバーブ（ゲートを通った声から響きを作って足す）
+        if (! reverbIdle)
+        {
+            y += reverb.next (y) * reverbLin * reverbMix;
+            if (reverbTarget == 0.0f && reverbMix == 0.0f)
+                reverbIdle = true;
+        }
 
         // リミッター（遅らせた音と、それにかける倍率）
         float limiterGain = 1.0f;
@@ -95,9 +122,6 @@ void Engine::processChunk (float* data, int n)
         y *= limiterGain;
         if (settings.limiter.on) // 念のための頭打ち（ふつうは効かない）
             y = std::clamp (y, -ceilingLin, ceilingLin);
-
-        // ゲートの開け閉め（最後）
-        y *= gateGain;
 
         // バイパス
         const float out = y + (dry - y) * bypassMix;

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(VcabLevel VERSION 1.0.1 LANGUAGES C CXX)
+project(VcabLevel VERSION 1.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,6 +25,7 @@ add_library(VcabLevelCore STATIC
     Source/Core/Dsp/Gate.cpp
     Source/Core/Dsp/Compressor.cpp
     Source/Core/Dsp/Limiter.cpp
+    Source/Core/Dsp/Reverb.cpp
 )
 target_include_directories(VcabLevelCore PUBLIC Source/Core)
 set_target_properties(VcabLevelCore PROPERTIES POSITION_INDEPENDENT_CODE ON)

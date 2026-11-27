@@ -16,14 +16,15 @@ public:
     // 1 標本を見て、いま下げる量（dB、0 以上）を返す
     float next (float x);
 
-    float levelDb() const { return level; } // いまの大きさ（RMS、dBFS）
+    float levelDb() const; // いまの大きさ（RMS、dBFS）
 
 private:
     double fs = 48000.0;
     CompSettings settings;
     float rmsCoef = 0.99f, attackCoef = 0.9f, releaseCoef = 0.99f;
+    // 2 乗の平均がこれより小さい間は、効き始め（閾値 − ニー/2）より確かに下なので、dB に直さずに目標を 0 とする（負荷を減らす）
+    double quietMeanSquare = 0.0;
     double meanSquare = 0.0;
-    float level = -120.0f;
     float reduction = 0.0f;
 
     void update();

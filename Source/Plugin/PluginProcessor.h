@@ -26,8 +26,8 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    // 入力が止まった後に出る音は、遅延（1ms）の分だけ
-    double getTailLengthSeconds() const override { return 0.01; }
+    // 入力が止まった後に出る音の長さ。遅延（1ms）の分と、リバーブがオンなら響きの尾（プリディレイ + 長さ）
+    double getTailLengthSeconds() const override;
     // ホストのバイパスを、画面の「バイパス」と同じものにする（ホスト側で切っても中の判定が続き、10ms でなめらかに移る。VcabDenoise と同じ）
     juce::AudioProcessorParameter* getBypassParameter() const override { return param (vcab::P::bypass); }
 

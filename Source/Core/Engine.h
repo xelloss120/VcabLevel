@@ -1,6 +1,7 @@
 // 全体の処理（2 章）:
-//   入力 ─┬───────────────────────────── ゲートの判定
-//         └→ コンプ → ゲイン → リミッター（先読み 1ms）→ ゲートの開け閉め → バイパスのクロスフェード → 出力
+//   入力 ─┬──────────────────────── ゲートの判定
+//         └→ コンプ → ゲイン → ゲートの開け閉め ─┬────────────┬→ リミッター（先読み 1ms）→ バイパスのクロスフェード → 出力
+//                                                └→ リバーブ ─┘（足す）
 // 入力チャンネルの選択はプラグインの側（PluginProcessor::mixToMono。VcabDenoise と同じ形）で行い、ここには 1 チャンネルを渡す。
 // JUCE には依存しない。遅延は 1ms（リミッターの先読み。リミッターをオフにしても変わらない）。
 #pragma once
@@ -8,6 +9,7 @@
 #include "Dsp/Compressor.h"
 #include "Dsp/Gate.h"
 #include "Dsp/Limiter.h"
+#include "Dsp/Reverb.h"
 #include "Params.h"
 
 #include <array>
@@ -83,19 +85,20 @@ private:
     Gate gate;
     Compressor comp;
     Limiter limiter;
+    Reverb reverb;
+    bool reverbIdle = true; // リバーブがオフで止めている（次にオンにしたとき、古い響きを消してから始める）
 
     // バイパス用に、元の音を遅延の分だけ遅らせる輪
     std::vector<float> dryRing;
     int dryPos = 0;
 
     // 段のオン/オフとバイパスのつなぎ（10ms の直線。0 で素通し / 1 で効く）
-    float gateMix = 1.0f, compMix = 1.0f, limiterMix = 1.0f, bypassMix = 0.0f, mixStep = 0.002f;
-    // ゲイン（20ms でならす）
-    float gainLin = 1.0f, gainCoef = 0.999f;
+    float gateMix = 1.0f, compMix = 1.0f, reverbMix = 0.0f, limiterMix = 1.0f, bypassMix = 0.0f, mixStep = 0.002f;
+    // ゲインと響きの量（20ms でならす）
+    float gainLin = 1.0f, reverbLin = 0.0f, gainCoef = 0.999f;
 
     // 画面用の区切り
     int frameLength = 480, frameFill = 0;
-    MeterFrame frame;
     float frameInPeak = 0.0f, frameOutPeak = 0.0f, frameGateMin = 1.0f, frameLimiterMin = 1.0f, frameComp = 0.0f;
     std::vector<MeterFrame>* frameLog = nullptr;
 

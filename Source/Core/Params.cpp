@@ -23,17 +23,16 @@ std::vector<ParamInfo> makeTable()
         // ゲート
         { P::gateOn, "gate_on", "ゲート", T::toggle, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, "", {},
           "黙っている間の音（部屋の雑音、息、ファン）を消します。\n"
-          "判定は音量を変える前の入力で行い、消すのは最後（リミッターの後）です。"
+          "判定は音量を変える前の入力で行い、消すのはゲインの後（リバーブとリミッターの前）です。"
           "なので、ゲインや上限を動かしても閾値を直す必要はありません。" },
-        { P::gateThreshold, "gate_threshold", "閾値", T::real, -80.0f, -20.0f, -48.0f, 0.5f, 0.0f, "dB", {},
+        { P::gateThreshold, "gate_threshold", "閾値", T::real, -80.0f, -20.0f, -42.0f, 0.5f, 0.0f, "dB", {},
           "入力の山がこれを超えたら開きます（開く線）。\n"
           "黙っているときの雑音より上、小さな声より下に置きます。グラフの紫の実線です。" },
         { P::gateHysteresis, "gate_hysteresis", "ヒステリシス", T::real, 0.0f, 12.0f, 3.0f, 0.5f, 0.0f, "dB", {},
           "閉じる線を、開く線よりこれだけ下げます（グラフの紫の点線）。\n"
           "語尾で音が線のまわりを上下しても、開け閉めを繰り返さない（パタつかない）ようにします。" },
         { P::gateAttack, "gate_attack", "アタック", T::real, 0.1f, 10.0f, 3.0f, 0.1f, geoCentre (0.1f, 10.0f), "ms", {},
-          "開くときのフェードの長さ。短いと声の頭がはっきりし、長いとプツッという音が出にくくなります。\n"
-          "判定は 1ms 先の音で行うので、声の頭は切れにくくなっています。" },
+          "開くときのフェードの長さ。短いと声の頭がはっきりし、長いとプツッという音が出にくくなります。" },
         { P::gateHold, "gate_hold", "ホールド", T::real, 0.0f, 500.0f, 100.0f, 1.0f, 0.0f, "ms", {},
           "閉じる線を下回ってから、閉じ始めるまで待つ時間。\n"
           "単語の間や「っ」のような短い切れ目で閉じないようにします。" },
@@ -53,9 +52,9 @@ std::vector<ParamInfo> makeTable()
         { P::compKnee, "comp_knee", "ニー", T::real, 0.0f, 12.0f, 1.0f, 0.5f, 0.0f, "dB", {},
           "閾値の前後で、効き始めをなだらかにする幅（折れ線の角を丸める幅）。\n"
           "広いと効き始めが目立たず、狭いと閾値を超えた声にだけ、はっきり効きます。" },
-        { P::compAttack, "comp_attack", "アタック", T::real, 0.1f, 50.0f, 6.0f, 0.1f, geoCentre (0.1f, 50.0f), "ms", {},
+        { P::compAttack, "comp_attack", "アタック", T::real, 0.1f, 50.0f, 10.0f, 0.1f, geoCentre (0.1f, 50.0f), "ms", {},
           "大きな声が来てから、抑え始める速さ。短いと声の頭から抑え、長いと声の頭の勢いを残します。" },
-        { P::compRelease, "comp_release", "リリース", T::real, 10.0f, 1000.0f, 150.0f, 1.0f, geoCentre (10.0f, 1000.0f), "ms", {},
+        { P::compRelease, "comp_release", "リリース", T::real, 10.0f, 1000.0f, 100.0f, 1.0f, geoCentre (10.0f, 1000.0f), "ms", {},
           "声が小さくなってから、抑えた分を戻す速さ。短いと音量が細かく揺れ、長いと大きな声の後の言葉まで小さくなります。" },
 
         // ゲイン
@@ -63,6 +62,22 @@ std::vector<ParamInfo> makeTable()
           "音量を上げ下げします。コンプの後、リミッターの前にかかります（リミッターにどれだけ押し込むかを決めます）。" },
         { P::gain, "gain", "ゲイン", T::real, -12.0f, 12.0f, 6.0f, 0.1f, 0.0f, "dB", {},
           "上げ下げする量。上げすぎると、リミッターが常に効いて音が詰まって聞こえます。" },
+
+        // リバーブ
+        { P::reverbOn, "reverb_on", "リバーブ", T::toggle, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, "", {},
+          "声に響きを足します。元の声はそのまま通し、同じ声から作った響きを足します。\n"
+          "ゲートの後ろにかかるので、ゲートが閉じても響きは自然に消えていき、黙っている間の雑音には響きが付きません。\n"
+          "初期値は歌うとき向けです。会話に薄く付けるなら、量 -24dB、長さ 0.5 秒、プリディレイ 10ms くらいが目安です。" },
+        { P::reverbLevel, "reverb_level", "量", T::real, -40.0f, 0.0f, -18.0f, 0.5f, 0.0f, "dB", {},
+          "響きの音量。元の声の音量は変わりません。" },
+        { P::reverbTime, "reverb_time", "長さ", T::real, 0.2f, 5.0f, 1.5f, 0.1f, geoCentre (0.2f, 5.0f), "s", {},
+          "響きが 60dB 小さくなる（ほぼ聞こえなくなる）までの時間。長いほど広い場所の響きになります。" },
+        { P::reverbPredelay, "reverb_predelay", "プリディレイ", T::real, 0.0f, 100.0f, 35.0f, 1.0f, 0.0f, "ms", {},
+          "声から響きが始まるまでの間。長いと、声が響きに埋もれにくくなります。" },
+        { P::reverbHighCut, "reverb_high_cut", "ハイカット", T::real, 2000.0f, 16000.0f, 6000.0f, 10.0f, geoCentre (2000.0f, 16000.0f), "Hz", {},
+          "響きの高い音を削ります。下げると響きが柔らかくなり、サ行が響きにくくなります。" },
+        { P::reverbLowCut, "reverb_low_cut", "ローカット", T::real, 50.0f, 500.0f, 200.0f, 1.0f, geoCentre (50.0f, 500.0f), "Hz", {},
+          "響きの低い音を削ります。上げると響きがこもりにくくなります。" },
 
         // リミッター
         { P::limiterOn, "limiter_on", "リミッター", T::toggle, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, "", {},
@@ -98,6 +113,9 @@ std::vector<ParamInfo> makeTable()
             && a.comp.on == b.comp.on && a.comp.threshold == b.comp.threshold && a.comp.ratio == b.comp.ratio
             && a.comp.knee == b.comp.knee && a.comp.attackMs == b.comp.attackMs && a.comp.releaseMs == b.comp.releaseMs
             && a.gain.on == b.gain.on && a.gain.db == b.gain.db
+            && a.reverb.on == b.reverb.on && a.reverb.levelDb == b.reverb.levelDb && a.reverb.timeS == b.reverb.timeS
+            && a.reverb.predelayMs == b.reverb.predelayMs && a.reverb.highCutHz == b.reverb.highCutHz
+            && a.reverb.lowCutHz == b.reverb.lowCutHz
             && a.limiter.on == b.limiter.on && a.limiter.ceiling == b.limiter.ceiling && a.limiter.releaseMs == b.limiter.releaseMs);
     (void) a;
     (void) b;
@@ -164,6 +182,14 @@ Settings Settings::fromValues (const std::array<float, kNumParams>& v)
 
     s.gain.on = on (P::gainOn);
     s.gain.db = get (P::gain);
+
+    auto& r = s.reverb;
+    r.on = on (P::reverbOn);
+    r.levelDb = get (P::reverbLevel);
+    r.timeS = std::max (0.05f, get (P::reverbTime));
+    r.predelayMs = std::clamp (get (P::reverbPredelay), 0.0f, 100.0f);
+    r.highCutHz = get (P::reverbHighCut);
+    r.lowCutHz = get (P::reverbLowCut);
 
     auto& l = s.limiter;
     l.on = on (P::limiterOn);

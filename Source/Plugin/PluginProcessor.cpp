@@ -27,7 +27,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VcabLevelProcessor::createLa
                 const bool signedValue = p.minValue < 0.0f && p.maxValue > 0.0f; // ゲインは + を付ける
                 layout.add (std::make_unique<juce::AudioParameterFloat> (
                     id, u8 (p.name), range, p.defaultValue,
-                    juce::AudioParameterFloatAttributes().withLabel (unit).withStringFromValueFunction (
+                    juce::AudioParameterFloatAttributes().withAutomatable (automatable).withLabel (unit).withStringFromValueFunction (
                         [decimals, unit, hz, ratio, signedValue] (float v, int)
                         {
                             if (ratio)
@@ -79,6 +79,14 @@ bool VcabLevelProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
     const auto out = layouts.getMainOutputChannelSet();
     const auto ok = [] (const juce::AudioChannelSet& s) { return s == juce::AudioChannelSet::mono() || s == juce::AudioChannelSet::stereo(); };
     return ok (in) && ok (out);
+}
+
+double VcabLevelProcessor::getTailLengthSeconds() const
+{
+    constexpr double kLatencyTail = 0.01;
+    if (value (vcab::P::reverbOn) < 0.5f)
+        return kLatencyTail;
+    return kLatencyTail + 0.001 * value (vcab::P::reverbPredelay) + value (vcab::P::reverbTime);
 }
 
 vcab::Settings VcabLevelProcessor::currentSettings() const
